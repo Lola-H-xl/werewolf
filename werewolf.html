@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>狼人杀记录</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:#f2f2f2;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue','PingFang SC',sans-serif;font-size:13px}
+body{display:flex;justify-content:center;align-items:flex-start}
+
+.phone{width:100%;max-width:430px;min-height:100dvh;background:#f2f2f2;position:relative}
+
+/* tabs */
+.tabs{display:flex;background:#fff;border-bottom:1px solid #e0e0e0;position:sticky;top:0;z-index:50}
+.tab{flex:1;padding:12px 4px;text-align:center;font-size:13px;font-weight:500;color:#888;cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;user-select:none}
+.tab.active{color:#2563eb;border-bottom-color:#2563eb}
+
+/* panes */
+.pane{display:none;padding:8px 8px 40px}
+.pane.active{display:block}
+
+/* player grid */
+.pgrid{display:grid;grid-template-columns:18px 1fr 64px 46px;align-items:center;background:#fff;border-radius:10px;border:1px solid #e8e8e8;overflow:hidden}
+.ph{font-size:10px;color:#aaa;padding:5px 3px;border-bottom:1px solid #ebebeb;background:#fafafa;text-align:center}
+.ph.left{text-align:left;padding-left:6px}
+
+.p-num{font-size:11px;color:#bbb;text-align:center;padding:6px 2px;border-bottom:1px solid #f0f0f0}
+.p-info{padding:5px 5px;border-bottom:1px solid #f0f0f0;min-width:0;overflow:hidden}
+.p-name{background:none;border:none;font-size:13px;font-weight:500;color:#1a1a1a;width:100%;outline:none;padding:0;display:block}
+.p-note{background:none;border:none;font-size:11px;color:#888;width:100%;outline:none;padding:0;margin-top:2px;display:block}
+.p-role{padding:5px 3px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:center;align-items:center}
+.p-alive{padding:5px 3px;border-bottom:1px solid #f0f0f0;display:flex;justify-content:center;align-items:center}
+
+.role-tag{height:24px;padding:0 5px;border-radius:5px;font-size:10px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;border:1px solid transparent;max-width:62px;overflow:hidden;text-overflow:ellipsis;user-select:none}
+.alive-btn{height:24px;width:42px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;border:none;display:inline-flex;align-items:center;justify-content:center;user-select:none}
+.alive-btn.yes{background:#e8f5ee;color:#1a7a3c}
+.alive-btn.no{background:#fde8e8;color:#c0392b}
+
+/* role colors */
+.r-none{background:#f5f5f5;color:#999;border-color:#ddd}
+.r-wolf{background:#e8e8e8;color:#3a3a3a;border-color:#bbb}
+.r-villager{background:#dff0d8;color:#2a6118;border-color:#8ec46e}
+.r-seer{background:#d6eaf8;color:#1a4e7a;border-color:#7ab8e8}
+.r-witch{background:#ece0f5;color:#5a2780;border-color:#b88de0}
+.r-guard{background:#fde9c5;color:#7a4806;border-color:#e8a84a}
+.r-hunter{background:#fde0e0;color:#882020;border-color:#e88080}
+.r-dreamer{background:#e0f0f5;color:#1a5560;border-color:#7ac4d4}
+.r-bear{background:#f0e8d8;color:#6a4010;border-color:#c89858}
+.r-knight{background:#e8e0f0;color:#3a2060;border-color:#9888c8}
+
+/* bottom sheet picker */
+.overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.4);display:none}
+.overlay.show{display:block}
+.sheet{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;border-radius:16px 16px 0 0;padding:12px 12px 32px;z-index:201;display:none}
+.sheet.show{display:block}
+.sheet-handle{width:36px;height:4px;background:#ddd;border-radius:2px;margin:0 auto 10px}
+.sheet-title{font-size:12px;color:#aaa;margin-bottom:10px;text-align:center}
+.picker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.picker-opt{padding:9px 4px;border-radius:8px;font-size:11px;font-weight:500;text-align:center;cursor:pointer;border:1px solid transparent;user-select:none;active:opacity:.7}
+
+/* vote pane */
+.day-block{background:#fff;border:1px solid #e8e8e8;border-radius:10px;margin-bottom:10px;overflow:hidden}
+.day-hdr{background:#fafafa;padding:9px 12px;font-size:13px;font-weight:600;color:#333;border-bottom:1px solid #ebebeb}
+.vrow{display:grid;grid-template-columns:1fr auto;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #f0f0f0}
+.vrow:last-child{border-bottom:none}
+.vrow-label{font-size:12px;color:#555}
+.vrow-sub{font-size:10px;color:#aaa;display:block;margin-top:1px}
+.vrow-inp{background:#f5f5f5;border:1px solid #e8e8e8;border-radius:6px;padding:5px 8px;font-size:12px;color:#333;width:130px;text-align:right;outline:none}
+.vrow-inp:focus{border-color:#2563eb}
+.hrow{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f0f0f0;background:#fff5f5}
+.hrow:last-child{border-bottom:none}
+.hrow-label{font-size:12px;color:#c0392b;font-weight:600;white-space:nowrap}
+.hrow-inp{flex:1;background:rgba(255,255,255,.8);border:1px solid #f5c0c0;border-radius:6px;padding:5px 8px;font-size:12px;color:#333;outline:none}
+.hrow-inp:focus{border-color:#c0392b}
+
+/* notes */
+.notes-area{width:100%;background:#fff;border:1px solid #e8e8e8;border-radius:10px;padding:12px;font-size:13px;color:#1a1a1a;resize:none;height:calc(100dvh - 90px);min-height:300px;font-family:inherit;line-height:1.75;outline:none}
+.notes-area:focus{border-color:#2563eb}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('players',this)">玩家列表</div>
+    <div class="tab" onclick="showTab('votes',this)">投票放逐</div>
+    <div class="tab" onclick="showTab('notes',this)">我的笔记</div>
+  </div>
+
+  <div class="pane active" id="pane-players">
+    <div class="pgrid" id="pgrid">
+      <div class="ph">#</div>
+      <div class="ph left">姓名 / 备注</div>
+      <div class="ph">角色</div>
+      <div class="ph">存活</div>
+    </div>
+  </div>
+
+  <div class="pane" id="pane-votes">
+    <div id="vdays"></div>
+  </div>
+
+  <div class="pane" id="pane-notes">
+    <textarea class="notes-area" id="notes" placeholder="记录分析和发言思路...&#10;&#10;· 3号发言逻辑混乱，高度怀疑&#10;· 7号和11号互跳预言家&#10;· 上警顺序：1→5→9→12→3"></textarea>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closePicker()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">选择角色标签</div>
+  <div class="picker-grid" id="pgrid2"></div>
+</div>
+
+<script>
+const ROLES=[
+  {key:'none',   label:'未知',    cls:'r-none'},
+  {key:'wolf',   label:'狼人',    cls:'r-wolf'},
+  {key:'wolf?',  label:'狼人?',   cls:'r-wolf'},
+  {key:'villager',  label:'村民',    cls:'r-villager'},
+  {key:'villager?', label:'村民?',   cls:'r-villager'},
+  {key:'seer',   label:'预言家',  cls:'r-seer'},
+  {key:'seer?',  label:'预言家?', cls:'r-seer'},
+  {key:'witch',  label:'女巫',    cls:'r-witch'},
+  {key:'witch?', label:'女巫?',   cls:'r-witch'},
+  {key:'guard',  label:'守卫',    cls:'r-guard'},
+  {key:'guard?', label:'守卫?',   cls:'r-guard'},
+  {key:'hunter', label:'猎人',    cls:'r-hunter'},
+  {key:'hunter?',label:'猎人?',   cls:'r-hunter'},
+  {key:'dreamer',label:'摄梦人',  cls:'r-dreamer'},
+  {key:'dreamer?',label:'摄梦人?',cls:'r-dreamer'},
+  {key:'bear',   label:'熊',      cls:'r-bear'},
+  {key:'bear?',  label:'熊?',     cls:'r-bear'},
+  {key:'knight', label:'骑士',    cls:'r-knight'},
+  {key:'knight?',label:'骑士?',   cls:'r-knight'},
+];
+
+const players = Array.from({length:15}, (_,i) => ({
+  id: i+1, name:'', note:'', role:'none', alive:true
+}));
+let pickerTarget = -1;
+const voteData = {};
+
+function getRoleDef(k){ return ROLES.find(r=>r.key===k) || ROLES[0]; }
+
+function renderPlayers(){
+  const grid = document.getElementById('pgrid');
+  grid.querySelectorAll('.p-num,.p-info,.p-role,.p-alive').forEach(e=>e.remove());
+  players.forEach((p,i) => {
+    const rd = getRoleDef(p.role);
+
+    const num = document.createElement('div');
+    num.className = 'p-num';
+    num.textContent = p.id;
+
+    const info = document.createElement('div');
+    info.className = 'p-info';
+    const ni = document.createElement('input');
+    ni.className = 'p-name'; ni.value = p.name; ni.placeholder = '玩家'+p.id;
+    ni.addEventListener('change', e => players[i].name = e.target.value);
+    const no = document.createElement('input');
+    no.className = 'p-note'; no.value = p.note; no.placeholder = '备注...';
+    no.addEventListener('change', e => players[i].note = e.target.value);
+    info.append(ni, no);
+
+    const rc = document.createElement('div');
+    rc.className = 'p-role';
+    const rt = document.createElement('span');
+    rt.className = 'role-tag ' + rd.cls;
+    rt.textContent = rd.label;
+    rt.addEventListener('click', () => openPicker(i));
+    rc.appendChild(rt);
+
+    const ac = document.createElement('div');
+    ac.className = 'p-alive';
+    const ab = document.createElement('button');
+    ab.className = 'alive-btn ' + (p.alive ? 'yes' : 'no');
+    ab.textContent = p.alive ? '存活' : '出局';
+    ab.addEventListener('click', () => { players[i].alive = !players[i].alive; renderPlayers(); });
+    ac.appendChild(ab);
+
+    grid.append(num, info, rc, ac);
+  });
+}
+
+function openPicker(idx){
+  pickerTarget = idx;
+  const g = document.getElementById('pgrid2');
+  g.innerHTML = '';
+  ROLES.forEach(r => {
+    const d = document.createElement('div');
+    d.className = 'picker-opt ' + r.cls;
+    d.textContent = r.label;
+    d.addEventListener('click', () => selectRole(r.key));
+    g.appendChild(d);
+  });
+  document.getElementById('overlay').classList.add('show');
+  document.getElementById('sheet').classList.add('show');
+}
+function closePicker(){
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('sheet').classList.remove('show');
+}
+function selectRole(key){
+  players[pickerTarget].role = key;
+  closePicker();
+  renderPlayers();
+}
+
+const DAYS = [
+  {day:1, rows:[
+    {id:'d1up',    label:'上警阶段',     sub:'投票人编号，如：2, 4, 6', highlight:false},
+    {id:'d1exile', label:'第1天 放逐',   sub:'被放逐玩家编号',           highlight:true},
+  ]},
+  {day:2, rows:[
+    {id:'d2die',   label:'第2天 夜晚死亡', sub:'死亡玩家编号',           highlight:true},
+    {id:'d2vote',  label:'第2天 投票',     sub:'投票人编号',              highlight:false},
+    {id:'d2exile', label:'第2天 放逐',     sub:'被放逐玩家编号',          highlight:true},
+  ]},
+  {day:3, rows:[
+    {id:'d3die',   label:'第3天 夜晚死亡', sub:'死亡玩家编号',           highlight:true},
+    {id:'d3vote',  label:'第3天 投票',     sub:'投票人编号',              highlight:false},
+    {id:'d3exile', label:'第3天 放逐',     sub:'被放逐玩家编号',          highlight:true},
+  ]},
+];
+
+function renderVotes(){
+  const el = document.getElementById('vdays');
+  el.innerHTML = '';
+  DAYS.forEach(d => {
+    const block = document.createElement('div');
+    block.className = 'day-block';
+    const hdr = document.createElement('div');
+    hdr.className = 'day-hdr';
+    hdr.textContent = '第 ' + d.day + ' 天';
+    block.appendChild(hdr);
+    d.rows.forEach(r => {
+      if(r.highlight){
+        const row = document.createElement('div');
+        row.className = 'hrow';
+        const lbl = document.createElement('span');
+        lbl.className = 'hrow-label';
+        lbl.textContent = r.label + '：';
+        const inp = document.createElement('input');
+        inp.className = 'hrow-inp';
+        inp.placeholder = r.sub;
+        inp.value = voteData[r.id] || '';
+        inp.addEventListener('change', e => voteData[r.id] = e.target.value);
+        row.append(lbl, inp);
+        block.appendChild(row);
+      } else {
+        const row = document.createElement('div');
+        row.className = 'vrow';
+        const left = document.createElement('div');
+        left.innerHTML = `<div class="vrow-label">${r.label}<span class="vrow-sub">${r.sub}</span></div>`;
+        const inp = document.createElement('input');
+        inp.className = 'vrow-inp';
+        inp.placeholder = '如：2, 4, 6';
+        inp.value = voteData[r.id] || '';
+        inp.addEventListener('change', e => voteData[r.id] = e.target.value);
+        row.append(left, inp);
+        block.appendChild(row);
+      }
+    });
+    el.appendChild(block);
+  });
+}
+
+function showTab(name, tabEl){
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  tabEl.classList.add('active');
+  document.getElementById('pane-' + name).classList.add('active');
+}
+
+renderPlayers();
+renderVotes();
+</script>
+</body>
+</html>
